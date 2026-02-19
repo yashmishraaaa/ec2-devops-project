@@ -13,36 +13,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Decode SSH key
-        run: |
-          echo "${{ secrets.EC2_KEY_B64 }}" | base64 -d > key.pem
-          chmod 644 key.pem
-          ls -la key.pem
-
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
-          key_path: key.pem
+          key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          timeout: 60s
-          command_timeout: 15m
           script_stop: true
           debug: true
           script: |
             echo "✅ SSH connected successfully"
 
-            APP_DIR="${{ secrets.APP_DIR }}"
-            REPO_URL="https://github.com/yashmishraaaa/ec2-devops-project.git"
-
-            mkdir -p $APP_DIR
-            cd $APP_DIR
+            mkdir -p /var/www/myapp
+            cd /var/www/myapp
 
             if [ -d ".git" ]; then
               git pull
             else
-              git clone $REPO_URL .
+              git clone https://github.com/yashmishraaaa/ec2-devops-project.git .
             fi
 
             npm install
@@ -50,3 +39,5 @@ jobs:
             pm2 delete all || true
             pm2 start app.js
             pm2 save
+
+            echo "✅ Deployment completed"
