@@ -10,52 +10,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
-      # 1️⃣ Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Node.js
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          node-version: 18
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 10m
+          script_stop: true
+          request_pty: true
+          debug: true
+          script: |
+            echo "✅ SSH connected"
 
-      # 3️⃣ Install dependencies
-      - name: Install dependencies
-        run: npm install
+            mkdir -p ${{ secrets.APP_DIR }}
+            cd ${{ secrets.APP_DIR }}
 
-      # 4️⃣ Dummy test step (for assignment marks)
-      - name: Run tests
-        run: echo "All tests passed ✅"
+            if [ -d ".git" ]; then
+              git pull
+            else
+              git clone https://github.com/yashmishraaaa/ec2-devops-project.git .
+            fi
 
-
-     -- name: Deploy to EC2
-  uses: appleboy/ssh-action@v1.0.3
-  with:
-    host: ${{ secrets.EC2_HOST }}
-    username: ${{ secrets.EC2_USER }}
-    key: ${{ secrets.EC2_SSH_KEY }}
-    port: 22
-    timeout: 60s
-    command_timeout: 10m
-    script_stop: true
-    request_pty: true
-    debug: true
-    script: |
-      echo "✅ SSH connected"
-
-      mkdir -p ${{ secrets.APP_DIR }}
-      cd ${{ secrets.APP_DIR }}
-
-      if [ -d ".git" ]; then
-        git pull
-      else
-        git clone https://github.com/yashmishraaaa/ec2-devops-project.git .
-      fi
-
-      npm install
-      sudo npm install -g pm2
-      pm2 delete all || true
-      pm2 start app.js
-      pm2 save
+            npm install
+            sudo npm install -g pm2
+            pm2 delete all || true
+            pm2 start app.js
+            pm2 save
