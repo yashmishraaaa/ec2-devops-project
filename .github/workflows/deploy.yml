@@ -7,24 +7,27 @@ on:
 
 jobs:
   deploy:
-    name: Deploy App to EC2
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Deploy to EC2 via SSH
+      - name: Decode SSH key
+        run: |
+          echo "${{ secrets.EC2_KEY_B64 }}" | base64 -d > key.pem
+          chmod 600 key.pem
+
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          key_path: key.pem
           port: 22
           timeout: 60s
           command_timeout: 15m
           script_stop: true
-          request_pty: true
           debug: true
           script: |
             echo "✅ SSH connected successfully"
@@ -36,20 +39,13 @@ jobs:
             cd $APP_DIR
 
             if [ -d ".git" ]; then
-              echo "📥 Pulling latest code"
               git pull
             else
-              echo "📦 Cloning repository"
               git clone $REPO_URL .
             fi
 
-            echo "📦 Installing dependencies"
             npm install
-
-            echo "🚀 Restarting app with PM2"
             sudo npm install -g pm2
             pm2 delete all || true
             pm2 start app.js
             pm2 save
-
-            echo "✅ Deployment completed"
