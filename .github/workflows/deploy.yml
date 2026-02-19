@@ -29,27 +29,33 @@ jobs:
       - name: Run tests
         run: echo "All tests passed ✅"
 
-      # 5️⃣ Deploy to EC2 via SSH
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # create app directory if not exists
-            mkdir -p ${{ secrets.APP_DIR }}
-            cd ${{ secrets.APP_DIR }}
 
-            # if repo exists pull, else clone
-            if [ -d ".git" ]; then
-              git pull
-            else
-              git clone https://github.com/yashmishraaaa/ec2-devops-project.git .
-            fi
+     -- name: Deploy to EC2
+  uses: appleboy/ssh-action@v1.0.3
+  with:
+    host: ${{ secrets.EC2_HOST }}
+    username: ${{ secrets.EC2_USER }}
+    key: ${{ secrets.EC2_SSH_KEY }}
+    port: 22
+    timeout: 60s
+    command_timeout: 10m
+    script_stop: true
+    request_pty: true
+    debug: true
+    script: |
+      echo "✅ SSH connected"
 
-            npm install
-            sudo npm install -g pm2
-            pm2 delete all || true
-            pm2 start app.js
-            pm2 save
+      mkdir -p ${{ secrets.APP_DIR }}
+      cd ${{ secrets.APP_DIR }}
+
+      if [ -d ".git" ]; then
+        git pull
+      else
+        git clone https://github.com/yashmishraaaa/ec2-devops-project.git .
+      fi
+
+      npm install
+      sudo npm install -g pm2
+      pm2 delete all || true
+      pm2 start app.js
+      pm2 save
