@@ -7,29 +7,49 @@ on:
 
 jobs:
   deploy:
+    name: Deploy App to EC2
     runs-on: ubuntu-latest
 
     steps:
-  - name: Checkout code
-    uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  - name: Add EC2 to known hosts
-    run: |
-      mkdir -p ~/.ssh
-      ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 15m
+          script_stop: true
+          request_pty: true
+          debug: true
+          script: |
+            echo "✅ SSH connected successfully"
 
-  - name: Deploy to EC2
-    uses: appleboy/ssh-action@v1.0.3
-    with:
-      host: ${{ secrets.EC2_HOST }}
-      username: ${{ secrets.EC2_USER }}
-      key: ${{ secrets.EC2_SSH_KEY }}
-      port: 22
-      timeout: 60s
-      command_timeout: 10m
-      script_stop: true
-      request_pty: true
-      debug: true
-      script: |
-        echo "✅ SSH connected"
-        ...
+            APP_DIR="${{ secrets.APP_DIR }}"
+            REPO_URL="https://github.com/yashmishraaaa/ec2-devops-project.git"
+
+            mkdir -p $APP_DIR
+            cd $APP_DIR
+
+            if [ -d ".git" ]; then
+              echo "📥 Pulling latest code"
+              git pull
+            else
+              echo "📦 Cloning repository"
+              git clone $REPO_URL .
+            fi
+
+            echo "📦 Installing dependencies"
+            npm install
+
+            echo "🚀 Restarting app with PM2"
+            sudo npm install -g pm2
+            pm2 delete all || true
+            pm2 start app.js
+            pm2 save
+
+            echo "✅ Deployment completed"
